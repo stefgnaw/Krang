@@ -75,7 +75,6 @@
         .pdf-mode {
             overflow: hidden;
             height: 100vh;
-            background: #f3f4f6;
         }
     </style>
 </head>
@@ -250,7 +249,7 @@
                 { id: 'businessModel', label: '商業模式 (BMC)', icon: Icons.Layout },
             ];
 
-            // 強健的 JSON 解析器 v6
+            // 強健的 JSON 解析器 v6 (針對陣列與物件逗號遺漏的全面修復)
             const parseJSON = (text) => {
                 if (!text) throw new Error("AI 未回傳任何內容");
 
@@ -284,8 +283,10 @@
                     return JSON.parse(fixed);
                 } catch (e) {
                     try {
+                        // 備用：如果修復失敗，嘗試最原始的
                         return JSON.parse(cleaned);
                     } catch (e2) {
+                        // 顯示部分錯誤訊息以供除錯
                          throw new Error(`JSON 格式錯誤: ${e2.message.slice(0, 50)}...`);
                     }
                 }
@@ -313,25 +314,23 @@
                 - Luxury/Select Shop (e.g., INVINCIBLE, Kith, Visvim): 85-100 points.
                 * INVINCIBLE must be scored significantly higher (>80) than mid-tier brands.
 
-                Example JSON Output Structure (Follow this exactly):
+                Required JSON Structure:
                 {
-                    "brandName": "Nike",
+                    "brandName": "${query}",
                     "intelligence": {
                         "sentiment": { "positive": 70, "neutral": 20, "negative": 10 },
-                        "keywords": ["Shoes", "Sport", "Run"],
-                        "summary": "A leading sports brand...",
-                        "competitorNews": [{ "source": "News", "title": "Title", "date": "2023-01-01" }],
+                        "keywords": ["k1", "k2", "k3", "k4", "k5"],
+                        "summary": "Summary...",
+                        "competitorNews": [{ "source": "Source", "title": "Title", "date": "YYYY-MM-DD" }],
                         "swot": {
-                            "strengths": ["S1", "S2"],
-                            "weaknesses": ["W1", "W2"],
-                            "opportunities": ["O1", "O2"],
-                            "threats": ["T1", "T2"]
+                            "strengths": ["S1", "S2", "S3"],
+                            "weaknesses": ["W1", "W2", "W3"],
+                            "opportunities": ["O1", "O2", "O3"],
+                            "threats": ["T1", "T2", "T3"]
                         }
                     },
                     "positioning": {
-                        "vision": "To bring inspiration...",
-                        "mission": "Do everything possible...",
-                        "values": "Innovation...",
+                        "vision": "Vision", "mission": "Mission", "values": "Values",
                         "attributes": [
                             { "subject": "價格親民", "A": 50, "fullMark": 100 },
                             { "subject": "品質高端", "A": 80, "fullMark": 100 },
@@ -342,22 +341,15 @@
                         ]
                     },
                     "competitors": [
-                        { "name": "Adidas", "type": "同類型", "feature": "Boost technology", "price": 70, "quality": 80, "brandHeat": 85 },
-                        { "name": "Puma", "type": "同類型", "feature": "Lifestyle focus", "price": 60, "quality": 70, "brandHeat": 75 }
+                        { "name": "Competitor A", "type": "同類型", "feature": "Feature", "price": 80, "quality": 70, "brandHeat": 90 }
                     ],
                     "targetAudience": [
-                        { "id": 1, "name": "Runner", "age": "20-30", "income": "Medium", "painPoint": "Need comfort", "hobby": "Running" }
+                        { "id": 1, "name": "Persona", "age": "25-30歲", "income": "4-5萬", "painPoint": "Pain", "hobby": "Hobby" }
                     ],
                     "businessModel": {
-                        "partners": ["Factory A", "Designer B"],
-                        "activities": ["Design", "Marketing"],
-                        "resources": ["Brand", "Tech"],
-                        "valueProp": ["Performance", "Style"],
-                        "relationships": ["Community", "App"],
-                        "channels": ["Retail", "Online"],
-                        "segments": ["Athletes", "Kids"],
-                        "costStructure": ["R&D", "Marketing"],
-                        "revenueStreams": ["Sales", "Apps"]
+                        "partners": ["P1"], "activities": ["A1"], "resources": ["R1"], "valueProp": ["V1"],
+                        "relationships": ["Rel1"], "channels": ["Ch1"], "segments": ["Seg1"],
+                        "costStructure": ["C1"], "revenueStreams": ["Rev1"]
                     }
                 }
 
@@ -495,7 +487,7 @@
                 btn.innerText = '生成中...';
                 btn.disabled = true;
 
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 3000)); // 增加緩衝時間到3秒，確保渲染
 
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF('l', 'mm', 'a4');
@@ -508,22 +500,33 @@
                     for (let i = 0; i < sections.length; i++) {
                         const sectionId = sections[i];
                         const element = document.getElementById(sectionId);
+                        
+                        // 自動滾動到該元素，確保可見
                         if (element) {
+                             // 在截圖前確保元素可見且樣式正確
+                            element.style.display = 'block';
+                            
                             if (i > 0) pdf.addPage();
+                            
+                            // 等待一點時間讓瀏覽器重繪
+                            await new Promise(r => setTimeout(r, 500));
+
                             const canvas = await window.html2canvas(element, {
                                 scale: 2,
                                 useCORS: true, 
                                 logging: false,
                                 width: element.offsetWidth,
-                                height: element.offsetHeight
+                                height: element.offsetHeight,
+                                backgroundColor: '#ffffff', // 強制白底
+                                windowWidth: 1200 // 強制視窗寬度，避免RWD導致跑版
                             });
                             
                             const imgData = canvas.toDataURL('image/png');
                             const imgProps = pdf.getImageProperties(imgData);
-                            const ratio = Math.min(pdfWidth / imgProps.width, pdfHeight / imgProps.height);
+                            const ratio = Math.min((pdfWidth - 20) / imgProps.width, (pdfHeight - 20) / imgProps.height);
                             
-                            const w = imgProps.width * ratio * 0.9; // 90% width to leave margins
-                            const h = imgProps.height * ratio * 0.9;
+                            const w = imgProps.width * ratio;
+                            const h = imgProps.height * ratio;
                             const x = (pdfWidth - w) / 2;
                             const y = (pdfHeight - h) / 2;
 
@@ -560,17 +563,16 @@
                 
                 // 1.8.5 必須指定明確高度 (重要)
                 const containerStyle = { height: '300px', width: '100%', minHeight: '300px' };
+                
+                // 確保在生成PDF時關閉動畫
+                const finalProps = { ...props, isAnimationActive: !isGeneratingPDF };
 
                 if (type === 'RadarChart') {
                     return (
                         <div style={containerStyle}>
                             <R.ResponsiveContainer>
-                                <ChartComponent {...props}>
-                                    <R.PolarGrid />
-                                    <R.PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 12 }} />
-                                    <R.PolarRadiusAxis angle={30} domain={[0, 100]} />
-                                    <R.Radar name={data.brandName} dataKey="A" stroke="#2563eb" strokeWidth={3} fill="#3b82f6" fillOpacity={0.4} />
-                                    <R.Tooltip />
+                                <ChartComponent {...finalProps}>
+                                    {children}
                                 </ChartComponent>
                             </R.ResponsiveContainer>
                         </div>
@@ -581,13 +583,8 @@
                     return (
                          <div style={containerStyle}>
                             <R.ResponsiveContainer>
-                                <ChartComponent {...props}>
-                                    <defs><linearGradient id="colorVol" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2}/><stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/></linearGradient></defs>
-                                    <R.CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <R.XAxis dataKey="name" tick={{fontSize: 10}} tickLine={false} axisLine={false} />
-                                    <R.YAxis tick={{fontSize: 10}} axisLine={false} tickLine={false} label={{ value: '熱度', angle: -90, position: 'insideLeft', fontSize: 10, fill: '#94a3b8' }} />
-                                    <R.Tooltip contentStyle={{borderRadius: '8px', border: 'none'}} />
-                                    <R.Area type="monotone" dataKey="value" stroke="#4f46e5" fillOpacity={1} fill="url(#colorVol)" />
+                                <ChartComponent {...finalProps}>
+                                    {children}
                                 </ChartComponent>
                             </R.ResponsiveContainer>
                         </div>
@@ -599,33 +596,7 @@
                          <div style={containerStyle}>
                             <R.ResponsiveContainer>
                                 <ChartComponent margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
-                                    <R.CartesianGrid strokeDasharray="3 3" />
-                                    <R.XAxis type="number" dataKey="price" name="價格" domain={[0, 100]} label={{ value: '價格', position: 'bottom', offset: 0, fontSize: 12 }} tick={{fontSize: 10}} />
-                                    <R.YAxis type="number" dataKey="quality" name="品質" domain={[0, 100]} label={{ value: '品質', angle: -90, position: 'left', fontSize: 12 }} tick={{fontSize: 10}} />
-                                    <R.ZAxis type="number" dataKey="brandHeat" range={[100, 1000]} name="熱度" />
-                                    <R.Tooltip cursor={{ strokeDasharray: '3 3' }} content={({ active, payload }) => {
-                                        if (active && payload && payload.length) {
-                                            const d = payload[0].payload;
-                                            return (
-                                                <div className="bg-white p-2 border border-slate-200 rounded shadow text-xs">
-                                                    <p className="font-bold mb-1" style={{color: getTypeColor(d.type)}}>{d.name} <span className="text-[10px] px-1 bg-slate-100 rounded text-slate-500 ml-1">{d.type || '未分類'}</span></p>
-                                                    <p className="text-xs text-gray-500 mb-1">"{d.feature || ''}"</p>
-                                                    <hr className="my-1 border-slate-100"/>
-                                                    <p>價格: {getScoreLabel(d.price, 'price')} ({d.price})</p>
-                                                    <p>品質: {getScoreLabel(d.quality, 'quality')} ({d.quality})</p>
-                                                    <p className="text-red-500">熱度: {getScoreLabel(d.brandHeat, 'brandHeat')} ({d.brandHeat})</p>
-                                                </div>
-                                            );
-                                        }
-                                        return null;
-                                    }} />
-                                    {/* 移除 Legend */}
-                                    <R.Scatter name="市場品牌" data={data.competitors} fill="#8884d8">
-                                        {data.competitors.map((entry, index) => (
-                                            <R.Cell key={`cell-${index}`} fill={getTypeColor(entry.type)} />
-                                        ))}
-                                        <R.LabelList dataKey="name" position="top" style={{ fill: '#555', fontSize: '10px', fontWeight: 'bold' }}/>
-                                    </R.Scatter>
+                                    {children}
                                 </ChartComponent>
                             </R.ResponsiveContainer>
                         </div>
@@ -634,8 +605,166 @@
 
                 return null;
             };
+            
+            // --- 定義 PreviewContent (解決 ReferenceError) ---
+            const PreviewContent = ({ tab }) => {
+                const { swot } = data.intelligence;
+                switch (tab) {
+                    case 'intelligence':
+                        return (
+                            <div className="p-6">
+                                <h2 className="text-2xl font-bold mb-4 text-slate-800">{data.brandName || '品牌名稱'} - 深度情資</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                    <div className="bg-green-50 p-3 rounded border-l-4 border-green-500"><h4 className="font-bold text-green-700 text-sm mb-2">Strengths</h4><ul className="list-disc pl-4 text-xs text-slate-600 space-y-1">{swot.strengths.map((s,i)=><li key={i}>{s}</li>)}</ul></div>
+                                    <div className="bg-red-50 p-3 rounded border-l-4 border-red-500"><h4 className="font-bold text-red-700 text-sm mb-2">Weaknesses</h4><ul className="list-disc pl-4 text-xs text-slate-600 space-y-1">{swot.weaknesses.map((s,i)=><li key={i}>{s}</li>)}</ul></div>
+                                    <div className="bg-blue-50 p-3 rounded border-l-4 border-blue-500"><h4 className="font-bold text-blue-700 text-sm mb-2">Opportunities</h4><ul className="list-disc pl-4 text-xs text-slate-600 space-y-1">{swot.opportunities.map((s,i)=><li key={i}>{s}</li>)}</ul></div>
+                                    <div className="bg-yellow-50 p-3 rounded border-l-4 border-yellow-500"><h4 className="font-bold text-yellow-700 text-sm mb-2">Threats</h4><ul className="list-disc pl-4 text-xs text-slate-600 space-y-1">{swot.threats.map((s,i)=><li key={i}>{s}</li>)}</ul></div>
+                                </div>
+                                <div className="h-64 bg-white rounded-xl border p-4 mb-4">
+                                    <h4 className="text-sm font-bold mb-2 text-slate-600 flex items-center gap-2"><Icons.TrendingUp size={16}/> 搜尋趨勢</h4>
+                                    <SafeChart type="AreaChart" data={data.intelligence.monthlySearchVolume.map((v, i) => ({ name: data.intelligence.trendLabels[i], value: v }))} isAnimationActive={!isGeneratingPDF}>
+                                        <window.Recharts.defs><linearGradient id="colorVol" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2}/><stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/></linearGradient></window.Recharts.defs>
+                                        <window.Recharts.CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <window.Recharts.XAxis dataKey="name" tick={{fontSize: 10}} tickLine={false} axisLine={false} />
+                                        <window.Recharts.YAxis tick={{fontSize: 10}} axisLine={false} tickLine={false} label={{ value: '熱度 (0-100)', angle: -90, position: 'insideLeft', fontSize: 10, fill: '#94a3b8' }} />
+                                        <window.Recharts.Tooltip contentStyle={{borderRadius: '8px', border: 'none'}} />
+                                        <window.Recharts.Area type="monotone" dataKey="value" stroke="#4f46e5" fillOpacity={1} fill="url(#colorVol)" isAnimationActive={!isGeneratingPDF} />
+                                    </SafeChart>
+                                </div>
+                            </div>
+                        );
+                    case 'competitors':
+                         return (
+                            <div className="p-6 flex flex-col items-center">
+                                <h2 className="text-2xl font-bold mb-4 text-slate-800">競品分析</h2>
+                                <div className="w-full h-[400px] md:h-[500px] bg-white border rounded-xl p-4 mb-6 relative">
+                                     <div className="absolute top-2 right-2 z-10 flex flex-col gap-1 bg-white/80 p-2 rounded text-[10px]">
+                                        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> 本品牌</div>
+                                        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span> 同類型</div>
+                                        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500"></span> 同國家</div>
+                                        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500"></span> 同風格</div>
+                                    </div>
+                                    <SafeChart type="ScatterChart" margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
+                                        <window.Recharts.CartesianGrid strokeDasharray="3 3" />
+                                        <window.Recharts.XAxis type="number" dataKey="price" name="價格" domain={[0, 100]} label={{ value: '價格', position: 'bottom', offset: 0, fontSize: 12 }} tick={{fontSize: 10}} />
+                                        <window.Recharts.YAxis type="number" dataKey="quality" name="品質" domain={[0, 100]} label={{ value: '風格獨特性 (大眾 → 前衛)', angle: -90, position: 'left', fontSize: 12 }} tick={{fontSize: 10}} />
+                                        <window.Recharts.ZAxis type="number" dataKey="brandHeat" range={[100, 1000]} name="熱度" />
+                                        <window.Recharts.Tooltip cursor={{ strokeDasharray: '3 3' }} content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                                const d = payload[0].payload;
+                                                return (
+                                                    <div className="bg-white p-2 border border-slate-200 rounded shadow text-xs">
+                                                        <p className="font-bold mb-1" style={{color: getTypeColor(d.type)}}>{d.name} <span className="text-[10px] px-1 bg-slate-100 rounded text-slate-500 ml-1">{d.type || '未分類'}</span></p>
+                                                        <p className="text-xs text-gray-500 mb-1">"{d.feature || ''}"</p>
+                                                        <hr className="my-1 border-slate-100"/>
+                                                        <p>價格: {getScoreLabel(d.price, 'price')} ({d.price})</p>
+                                                        <p>品質: {getScoreLabel(d.quality, 'quality')} ({d.quality})</p>
+                                                        <p className="text-red-500">熱度: {getScoreLabel(d.brandHeat, 'brandHeat')} ({d.brandHeat})</p>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        }} />
+                                        <window.Recharts.Scatter name="市場品牌" data={data.competitors} fill="#8884d8" isAnimationActive={!isGeneratingPDF}>
+                                            {data.competitors.map((entry, index) => (
+                                                <window.Recharts.Cell key={`cell-${index}`} fill={getTypeColor(entry.type)} />
+                                            ))}
+                                            <window.Recharts.LabelList dataKey="name" position="top" style={{ fill: '#555', fontSize: '10px', fontWeight: 'bold' }}/>
+                                        </window.Recharts.Scatter>
+                                    </SafeChart>
+                                </div>
+                                <div className="w-full overflow-x-auto">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="bg-slate-100"><tr><th className="p-3 whitespace-nowrap">品牌</th><th className="p-3 whitespace-nowrap">類別</th><th className="p-3 whitespace-nowrap">價格定位</th><th className="p-3 whitespace-nowrap">品質層級</th><th className="p-3 whitespace-nowrap">熱度</th></tr></thead>
+                                        <tbody>
+                                            {data.competitors.map((c,i)=>(
+                                                <tr key={i} className="border-b"><td className="p-3 font-bold whitespace-nowrap">{c.name}</td><td className="p-3 text-slate-500 whitespace-nowrap">{c.type || '-'}</td><td className="p-3 text-slate-600">{getScoreLabel(c.price,'price')}</td><td className="p-3 text-slate-600">{getScoreLabel(c.quality,'quality')}</td><td className="p-3 text-red-500">{getScoreLabel(c.brandHeat,'brandHeat')}</td></tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                         );
+                    case 'positioning':
+                        return (
+                            <div className="p-6 flex flex-col items-center">
+                                <h2 className="text-2xl font-bold mb-4 text-slate-800">品牌定位</h2>
+                                <div className="w-full h-80 md:h-96">
+                                    <SafeChart type="RadarChart" cx="50%" cy="50%" outerRadius="65%" data={data.positioning.attributes} isAnimationActive={!isGeneratingPDF}>
+                                        <window.Recharts.PolarGrid />
+                                        <window.Recharts.PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 12 }} />
+                                        <window.Recharts.PolarRadiusAxis angle={30} domain={[0, 100]} />
+                                        <window.Recharts.Radar name={data.brandName} dataKey="A" stroke="#2563eb" strokeWidth={3} fill="#3b82f6" fillOpacity={0.4} isAnimationActive={!isGeneratingPDF} />
+                                        <window.Recharts.Tooltip />
+                                    </SafeChart>
+                                </div>
+                                <div className="mt-6 grid grid-cols-1 gap-4 w-full">
+                                    <div className="p-4 bg-indigo-50 rounded-lg"><h4 className="font-bold text-indigo-800 mb-2">願景</h4><p className="text-sm text-slate-700">{data.positioning.vision}</p></div>
+                                    <div className="p-4 bg-purple-50 rounded-lg"><h4 className="font-bold text-purple-800 mb-2">使命</h4><p className="text-sm text-slate-700">{data.positioning.mission}</p></div>
+                                </div>
+                            </div>
+                        );
+                    case 'audience':
+                        return (
+                            <div className="p-6">
+                                <h2 className="text-2xl font-bold mb-4 text-slate-800">目標客群 (TA)</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {data.targetAudience.map((ta, idx) => (
+                                        <div key={idx} className="bg-white border rounded-xl p-4 shadow-sm">
+                                            <div className="flex items-center gap-3 mb-3">
+                                                <div className="bg-blue-100 p-2 rounded-full text-blue-600"><Icons.Users size={20}/></div>
+                                                <div><div className="font-bold text-lg">{ta.name}</div><div className="text-xs text-slate-500">{ta.age}</div></div>
+                                            </div>
+                                            <div className="space-y-2 text-xs">
+                                                <div className="p-2 bg-slate-50 rounded"><strong>收入:</strong> {ta.income}</div>
+                                                <div className="p-2 bg-slate-50 rounded"><strong>痛點:</strong> {ta.painPoint}</div>
+                                                <div className="p-2 bg-slate-50 rounded"><strong>興趣:</strong> {ta.hobby}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    case 'businessModel':
+                        return (
+                            <div className="p-6 h-full">
+                                <h2 className="text-2xl font-bold mb-4 text-slate-800">商業模式畫布</h2>
+                                <div className="grid grid-cols-5 grid-rows-[200px_200px_100px] gap-2 min-h-[500px] border-2 border-slate-800 bg-slate-800 p-2 rounded-lg h-full">
+                                    <div className="bg-white p-2 rounded row-span-2 col-span-1 overflow-y-auto"><h4 className="font-bold text-xs text-slate-500 mb-1">關鍵合作夥伴</h4><ul className="list-disc pl-4 text-xs text-slate-800">{data.businessModel.partners.map((item,i)=><li key={i}>{item}</li>)}</ul></div>
+                                    
+                                    <div className="col-span-1 row-span-2 flex flex-col gap-2">
+                                        <div className="bg-white p-2 rounded flex-1 overflow-y-auto"><h4 className="font-bold text-xs text-slate-500 mb-1">關鍵活動</h4><ul className="list-disc pl-4 text-xs text-slate-800">{data.businessModel.activities.map((item,i)=><li key={i}>{item}</li>)}</ul></div>
+                                        <div className="bg-white p-2 rounded flex-1 overflow-y-auto"><h4 className="font-bold text-xs text-slate-500 mb-1">關鍵資源</h4><ul className="list-disc pl-4 text-xs text-slate-800">{data.businessModel.resources.map((item,i)=><li key={i}>{item}</li>)}</ul></div>
+                                    </div>
+                                    
+                                    <div className="bg-white p-2 rounded row-span-2 col-span-1 overflow-y-auto"><h4 className="font-bold text-xs text-blue-600 mb-1">價值主張</h4><ul className="list-disc pl-4 text-xs text-slate-800">{data.businessModel.valueProp.map((item,i)=><li key={i}>{item}</li>)}</ul></div>
+                                    
+                                    <div className="col-span-1 row-span-2 flex flex-col gap-2">
+                                        <div className="bg-white p-2 rounded flex-1 overflow-y-auto"><h4 className="font-bold text-xs text-slate-500 mb-1">顧客關係</h4><ul className="list-disc pl-4 text-xs text-slate-800">{data.businessModel.relationships.map((item,i)=><li key={i}>{item}</li>)}</ul></div>
+                                        <div className="bg-white p-2 rounded flex-1 overflow-y-auto"><h4 className="font-bold text-xs text-slate-500 mb-1">通路</h4><ul className="list-disc pl-4 text-xs text-slate-800">{data.businessModel.channels.map((item,i)=><li key={i}>{item}</li>)}</ul></div>
+                                    </div>
+                                    
+                                    <div className="bg-white p-2 rounded row-span-2 col-span-1 overflow-y-auto"><h4 className="font-bold text-xs text-slate-500 mb-1">目標客群</h4><ul className="list-disc pl-4 text-xs text-slate-800">{data.businessModel.segments.map((item,i)=><li key={i}>{item}</li>)}</ul></div>
+                                    
+                                    <div className="bg-white p-2 rounded col-span-2.5 row-start-3 col-start-1 overflow-y-auto"><h4 className="font-bold text-xs text-slate-500 mb-1">成本結構</h4><div className="flex flex-wrap gap-2">{data.businessModel.costStructure.map((item,i)=><span key={i} className="bg-red-50 text-red-700 text-[10px] px-2 py-1 rounded">{item}</span>)}</div></div>
+                                    <div className="bg-white p-2 rounded col-span-2.5 row-start-3 col-start-3 overflow-y-auto"><h4 className="font-bold text-xs text-slate-500 mb-1">收益流</h4><div className="flex flex-wrap gap-2">{data.businessModel.revenueStreams.map((item,i)=><span key={i} className="bg-green-50 text-green-700 text-[10px] px-2 py-1 rounded">{item}</span>)}</div></div>
+                                </div>
+                            </div>
+                         );
+                    default: return <div className="p-10 text-center text-slate-400">請選擇左側功能進行預覽</div>;
+                }
+            }
+            
+            // 定義 renderPreviewWrapper (解決 ReferenceError)
+            const renderPreviewWrapper = () => {
+                return (
+                    <div className="h-full p-6 overflow-y-auto custom-scrollbar pb-20 md:pb-6">
+                        <PreviewContent tab={activeTab} />
+                    </div>
+                );
+            };
 
-
+            // renderEditor 定義 (解決 ReferenceError)
             const renderEditor = () => {
                 const { swot } = data.intelligence;
                 switch (activeTab) {
@@ -701,7 +830,13 @@
                                     <div><label className="text-xs text-slate-500">品牌名稱</label><input className="w-full border p-2 rounded" value={data.brandName} onChange={(e)=>setData({...data, brandName:e.target.value})} /></div>
                                     <div><label className="text-xs text-slate-500">願景</label><textarea className="w-full border p-2 rounded" rows="2" value={data.positioning.vision} onChange={(e)=>handleNestedChange('positioning','vision',e.target.value)} /></div>
                                     <div className="h-64 w-full border rounded p-2 bg-white">
-                                        <SafeChart type="RadarChart" cx="50%" cy="50%" outerRadius="80%" data={data.positioning.attributes} />
+                                        <SafeChart type="RadarChart" cx="50%" cy="50%" outerRadius="80%" data={data.positioning.attributes} isAnimationActive={!isGeneratingPDF}>
+                                            <window.Recharts.PolarGrid />
+                                            <window.Recharts.PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 12 }} />
+                                            <window.Recharts.PolarRadiusAxis angle={30} domain={[0, 100]} />
+                                            <window.Recharts.Radar name={data.brandName} dataKey="A" stroke="#2563eb" strokeWidth={3} fill="#3b82f6" fillOpacity={0.4} />
+                                            <window.Recharts.Tooltip />
+                                        </SafeChart>
                                     </div>
                                 </div>
                             </div>
@@ -773,99 +908,6 @@
                 }
             };
 
-            const renderPreview = () => {
-                const { swot } = data.intelligence;
-                switch (activeTab) {
-                    case 'intelligence':
-                        return (
-                            <div className="h-full p-6 overflow-y-auto custom-scrollbar pb-20 md:pb-6">
-                                <h2 className="text-2xl font-bold mb-4 text-slate-800">{data.brandName || '品牌名稱'}</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                    <div className="bg-green-50 p-3 rounded border-l-4 border-green-500"><h4 className="font-bold text-green-700 text-sm mb-2">Strengths</h4><ul className="list-disc pl-4 text-xs text-slate-600 space-y-1">{swot.strengths.map((s,i)=><li key={i}>{s}</li>)}</ul></div>
-                                    <div className="bg-red-50 p-3 rounded border-l-4 border-red-500"><h4 className="font-bold text-red-700 text-sm mb-2">Weaknesses</h4><ul className="list-disc pl-4 text-xs text-slate-600 space-y-1">{swot.weaknesses.map((s,i)=><li key={i}>{s}</li>)}</ul></div>
-                                    <div className="bg-blue-50 p-3 rounded border-l-4 border-blue-500"><h4 className="font-bold text-blue-700 text-sm mb-2">Opportunities</h4><ul className="list-disc pl-4 text-xs text-slate-600 space-y-1">{swot.opportunities.map((s,i)=><li key={i}>{s}</li>)}</ul></div>
-                                    <div className="bg-yellow-50 p-3 rounded border-l-4 border-yellow-500"><h4 className="font-bold text-yellow-700 text-sm mb-2">Threats</h4><ul className="list-disc pl-4 text-xs text-slate-600 space-y-1">{swot.threats.map((s,i)=><li key={i}>{s}</li>)}</ul></div>
-                                </div>
-                                <div className="h-64 bg-white rounded-xl border p-4 mb-4">
-                                    <h4 className="text-sm font-bold mb-2 text-slate-600 flex items-center gap-2"><Icons.TrendingUp size={16}/> 搜尋趨勢</h4>
-                                    <SafeChart type="AreaChart" data={data.intelligence.monthlySearchVolume.map((v, i) => ({ name: data.intelligence.trendLabels[i], value: v }))} />
-                                </div>
-                            </div>
-                        );
-                    case 'competitors':
-                         return (
-                            <div className="h-full p-6 flex flex-col items-center overflow-y-auto custom-scrollbar pb-20 md:pb-6">
-                                <h2 className="text-2xl font-bold mb-4">競品定位地圖</h2>
-                                <div className="w-full h-[400px] md:h-[500px] bg-white border rounded-xl p-4 mb-6 relative">
-                                     <div className="absolute top-2 right-2 z-10 flex flex-col gap-1 bg-white/80 p-2 rounded text-[10px]">
-                                        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> 本品牌</div>
-                                        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span> 同類型</div>
-                                        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500"></span> 同國家</div>
-                                        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500"></span> 同風格</div>
-                                    </div>
-                                    <SafeChart type="ScatterChart" />
-                                </div>
-                                <div className="w-full overflow-x-auto">
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="bg-slate-100"><tr><th className="p-3 whitespace-nowrap">品牌</th><th className="p-3 whitespace-nowrap">類別</th><th className="p-3 whitespace-nowrap">價格定位</th><th className="p-3 whitespace-nowrap">品質層級</th><th className="p-3 whitespace-nowrap">熱度</th></tr></thead>
-                                        <tbody>{data.competitors.map((c,i)=><tr key={i} className="border-b"><td className="p-3 font-bold whitespace-nowrap">{c.name}</td><td className="p-3 text-slate-500 whitespace-nowrap">{c.type}</td><td className="p-3 text-slate-600">{getScoreLabel(c.price,'price')}</td><td className="p-3 text-slate-600">{getScoreLabel(c.quality,'quality')}</td><td className="p-3 text-red-500 font-bold">{getScoreLabel(c.brandHeat,'brandHeat')}</td></tr>)}</tbody>
-                                    </table>
-                                </div>
-                            </div>
-                         );
-                    case 'positioning':
-                        return (
-                            <div className="h-full p-6 overflow-y-auto custom-scrollbar pb-20 md:pb-6 flex flex-col items-center">
-                                <div className="w-full h-80 md:h-96"><SafeChart type="RadarChart" cx="50%" cy="50%" outerRadius="80%" data={data.positioning.attributes} /></div>
-                                <div className="mt-6 grid grid-cols-1 gap-4 w-full">
-                                    <div className="p-4 bg-indigo-50 rounded-lg"><h4 className="font-bold text-indigo-800 mb-2">願景</h4><p className="text-sm text-slate-700">{data.positioning.vision}</p></div>
-                                    <div className="p-4 bg-purple-50 rounded-lg"><h4 className="font-bold text-purple-800 mb-2">使命</h4><p className="text-sm text-slate-700">{data.positioning.mission}</p></div>
-                                </div>
-                            </div>
-                        );
-                    case 'audience':
-                        return (
-                            <div className="h-full p-6 overflow-y-auto custom-scrollbar pb-20 md:pb-6">
-                                <h2 className="text-2xl font-bold mb-4 text-slate-800">目標客群 (TA)</h2>
-                                {data.targetAudience.length === 0 ? (
-                                    <div className="text-center p-8 text-slate-400 bg-slate-50 rounded border border-dashed">尚無客群資料</div>
-                                ) : (
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        {data.targetAudience.map((ta, idx) => (
-                                            <div key={idx} className="bg-white border rounded-xl p-4 shadow-sm">
-                                                <div className="flex items-center gap-3 mb-3">
-                                                    <div className="bg-blue-100 p-2 rounded-full text-blue-600"><Icons.Users size={20}/></div>
-                                                    <div><div className="font-bold text-lg">{ta.name}</div><div className="text-xs text-slate-500">{ta.age}</div></div>
-                                                </div>
-                                                <div className="space-y-2 text-xs">
-                                                    <div className="p-2 bg-slate-50 rounded"><strong>收入:</strong> {ta.income}</div>
-                                                    <div className="p-2 bg-slate-50 rounded"><strong>痛點:</strong> {ta.painPoint}</div>
-                                                    <div className="p-2 bg-slate-50 rounded"><strong>興趣:</strong> {ta.hobby}</div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    case 'businessModel':
-                         return (
-                            <div className="h-full p-6 overflow-y-auto custom-scrollbar pb-20 md:pb-6">
-                                <h2 className="text-2xl font-bold mb-4">商業模式畫布</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {Object.entries(data.businessModel).map(([k,v], i)=>(
-                                        <div key={i} className="bg-white border p-3 rounded shadow-sm">
-                                            <h4 className="text-xs font-bold uppercase text-slate-500 mb-2">{BMC_TITLES[k] || k}</h4>
-                                            <ul className="list-disc pl-4 text-xs space-y-1">{v.map((item,j)=><li key={j}>{item}</li>)}</ul>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                         );
-                    default: return <div className="p-10 text-center text-slate-400">請選擇功能</div>;
-                }
-            }
-
             return (
                 <div id="pdf-export-target" className={`min-h-screen bg-slate-50 flex flex-col font-sans h-full fixed w-full ${isGeneratingPDF ? 'pdf-mode' : ''}`}>
                     {/* PDF 生成時的隱藏容器 */}
@@ -926,13 +968,13 @@
                             <div className="hidden md:block flex-1 bg-white p-8 overflow-y-auto relative">
                                 <div className="h-full border-2 border-dashed border-slate-100 rounded-xl flex flex-col overflow-hidden relative">
                                     <div className="absolute top-4 right-4 text-[10px] font-bold text-slate-300 uppercase z-10">Live Dashboard</div>
-                                    {renderPreview()}
+                                    {renderPreviewWrapper()}
                                 </div>
                             </div>
                             
                              {isPresentationMode && (
                                 <div className="md:hidden absolute inset-0 bg-white z-20 overflow-y-auto">
-                                    {renderPreview()}
+                                    {renderPreviewWrapper()}
                                 </div>
                             )}
                         </main>
@@ -946,7 +988,7 @@
                                 <button onClick={()=>setIsPresentationMode(false)} className="bg-white text-slate-900 px-4 py-2 rounded font-bold hover:bg-slate-200">退出</button>
                             </div>
                             <div className="flex-1 p-8 flex justify-center overflow-auto bg-slate-100 text-slate-900">
-                                <div className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden">{renderPreview()}</div>
+                                <div className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden">{renderPreviewWrapper()}</div>
                             </div>
                             <div className="p-4 bg-slate-800 flex justify-center gap-4">
                                 {navItems.map(item => <button key={item.id} onClick={()=>setActiveTab(item.id)} className={`px-4 py-2 rounded text-sm ${activeTab===item.id?'bg-blue-600':'hover:bg-slate-700'}`}>{item.label}</button>)}
