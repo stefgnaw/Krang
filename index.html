@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Brand Strategy Deck Generator</title>
     
-    <!-- 1. 環境模擬 -->
+    <!-- 1. 環境變數 -->
     <script>
         window.process = { env: { NODE_ENV: 'production' } };
     </script>
@@ -14,7 +14,7 @@
     <script crossorigin src="https://unpkg.com/react@17.0.2/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@17.0.2/umd/react-dom.production.min.js"></script>
     
-    <!-- 3. 關鍵相容性補丁 -->
+    <!-- 3. 關鍵補丁：雖然 1.8.5 較穩定，但保留此補丁以防萬一 -->
     <script>
         if (window.React && !window.React.default) {
             window.React.default = window.React;
@@ -24,13 +24,13 @@
         }
     </script>
 
-    <!-- 4. Babel 解析器 -->
+    <!-- 4. Babel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     
-    <!-- 5. 樣式庫 -->
+    <!-- 5. Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- 6. Recharts 依賴與庫 (使用 1.8.5 穩定版以解決顯示問題) -->
+    <!-- 6. Recharts 依賴 & 主程式 (降級至 1.8.5 以確保 100% 顯示) -->
     <script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
     <script src="https://unpkg.com/recharts@1.8.5/umd/Recharts.min.js"></script>
     
@@ -210,18 +210,9 @@
             const [searchLog, setSearchLog] = useState([]);
             const [errorMsg, setErrorMsg] = useState(null);
             const [rawAiResponse, setRawAiResponse] = useState('');
-            const [isRechartsLoaded, setIsRechartsLoaded] = useState(false);
-
-            useEffect(() => {
-                const checkRecharts = () => {
-                    if (window.Recharts) {
-                        setIsRechartsLoaded(true);
-                    } else {
-                        setTimeout(checkRecharts, 300);
-                    }
-                };
-                checkRecharts();
-            }, []);
+            
+            // Recharts 1.8.5 直接使用 window.Recharts
+            const isRechartsLoaded = !!window.Recharts;
 
             const navItems = [
                 { id: 'intelligence', label: '深度情資與 SWOT', icon: Icons.Globe },
@@ -490,12 +481,13 @@
             // Recharts 1.8.5 安全渲染組件
             const SafeChart = ({ type, children, ...props }) => {
                 if (!window.Recharts) return <div className="flex items-center justify-center h-full text-slate-400 text-xs">圖表載入中...</div>;
+                
                 const R = window.Recharts;
                 const ChartComponent = R[type];
                 if (!ChartComponent) return null;
                 
                 // 1.8.5 必須指定明確高度 (重要)
-                const containerStyle = { height: '300px', width: '100%' };
+                const containerStyle = { height: '300px', width: '100%', minHeight: '300px' };
 
                 if (type === 'RadarChart') {
                     return (
@@ -536,8 +528,8 @@
                             <R.ResponsiveContainer>
                                 <ChartComponent margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
                                     <R.CartesianGrid strokeDasharray="3 3" />
-                                    <R.XAxis type="number" dataKey="price" name="價格" domain={[0, 100]} label={{ value: '價格', position: 'bottom', offset: 0, fontSize: 12 }} tick={{fontSize: 10}} />
-                                    <R.YAxis type="number" dataKey="quality" name="品質" domain={[0, 100]} label={{ value: '品質', angle: -90, position: 'left', fontSize: 12 }} tick={{fontSize: 10}} />
+                                    <R.XAxis type="number" dataKey="price" name="價格" domain={[0, 100]} label={{ value: '價格 (平價 → 昂貴)', position: 'bottom', offset: 0, fontSize: 12 }} tick={{fontSize: 10}} />
+                                    <R.YAxis type="number" dataKey="quality" name="品質" domain={[0, 100]} label={{ value: '品質 (一般 → 頂級)', angle: -90, position: 'left', fontSize: 12 }} tick={{fontSize: 10}} />
                                     <R.ZAxis type="number" dataKey="brandHeat" range={[100, 1000]} name="熱度" />
                                     <R.Tooltip cursor={{ strokeDasharray: '3 3' }} content={({ active, payload }) => {
                                         if (active && payload && payload.length) {
@@ -642,7 +634,7 @@
                                 <div className="space-y-4">
                                     <div><label className="text-xs text-slate-500">品牌名稱</label><input className="w-full border p-2 rounded" value={data.brandName} onChange={(e)=>setData({...data, brandName:e.target.value})} /></div>
                                     <div><label className="text-xs text-slate-500">願景</label><textarea className="w-full border p-2 rounded" rows="2" value={data.positioning.vision} onChange={(e)=>handleNestedChange('positioning','vision',e.target.value)} /></div>
-                                    <div className="h-64 w-full border rounded p-2 bg-white">
+                                    <div className="w-full border rounded p-2 bg-white">
                                         <SafeChart type="RadarChart" cx="50%" cy="50%" outerRadius="80%" data={data.positioning.attributes} />
                                     </div>
                                 </div>
@@ -652,7 +644,7 @@
                         return (
                             <div className="space-y-6 animate-fadeIn pb-20 md:pb-0">
                                 <SectionTitle icon={Icons.BarChart2} title="競品分析" subtitle="定位地圖與數據" />
-                                <div className="w-full h-80 bg-white border rounded-xl p-4">
+                                <div className="w-full bg-white border rounded-xl p-4">
                                     <SafeChart type="ScatterChart" />
                                 </div>
                                 <div className="overflow-x-auto">
@@ -667,7 +659,6 @@
                                 </div>
                             </div>
                         );
-                    // ... 其他 Tab 簡化以節省長度，邏輯相同 ...
                     case 'audience':
                         return (
                             <div className="space-y-6 animate-fadeIn pb-20 md:pb-0">
