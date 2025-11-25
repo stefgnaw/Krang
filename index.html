@@ -67,12 +67,15 @@
             padding: 40px;
             width: 100%;
             max-width: 800px;
-            margin: 0 auto 20px auto;
+            margin: 0 auto 0 auto;
             page-break-after: always;
+            height: 600px; /* 強制固定高度以利截圖 */
+            position: relative;
         }
         .pdf-mode {
             overflow: hidden;
             height: 100vh;
+            background: white;
         }
     </style>
 </head>
@@ -597,7 +600,7 @@
                                         }
                                         return null;
                                     }} />
-                                    {/* 移除了 Legend */}
+                                    {/* 移除了 Legend 以避免遮擋 */}
                                     <R.Scatter name="市場品牌" data={data.competitors} fill="#8884d8">
                                         {data.competitors.map((entry, index) => (
                                             <R.Cell key={`cell-${index}`} fill={getTypeColor(entry.type)} />
@@ -862,13 +865,11 @@
                     <header className="bg-white border-b h-14 px-4 flex items-center justify-between shrink-0 z-20">
                         <div className="flex items-center gap-2"><div className="bg-blue-600 p-1.5 rounded"><Icons.Brain className="text-white" size={18}/></div><h1 className="font-bold text-md md:text-lg">Krang</h1></div>
                         
-                        {/* Mobile Toggle Switch */}
                         <div className="flex md:hidden bg-slate-100 rounded-lg p-1">
                             <button onClick={()=>setIsPresentationMode(false)} className={`px-3 py-1 text-xs rounded-md transition-all ${!isPresentationMode?'bg-white shadow text-blue-600 font-bold':'text-slate-500'}`}>編輯</button>
                             <button onClick={()=>setIsPresentationMode(true)} className={`px-3 py-1 text-xs rounded-md transition-all ${isPresentationMode?'bg-white shadow text-blue-600 font-bold':'text-slate-500'}`}>預覽</button>
                         </div>
 
-                        {/* Desktop Actions */}
                         <div className="hidden md:flex gap-2">
                              <button id="download-btn" onClick={handleDownloadPDF} className="flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-sm shadow-sm"><Icons.Save size={16}/> 下載 PDF</button>
                             <button onClick={()=>setIsPresentationMode(true)} className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"><Icons.Presentation size={16}/> 簡報模式</button>
