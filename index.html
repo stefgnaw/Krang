@@ -14,7 +14,7 @@
     <script crossorigin src="https://unpkg.com/react@17.0.2/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@17.0.2/umd/react-dom.production.min.js"></script>
     
-    <!-- 3. 關鍵相容性補丁 -->
+    <!-- 3. 關鍵補丁 -->
     <script>
         if (window.React && !window.React.default) {
             window.React.default = window.React;
@@ -69,13 +69,13 @@
             max-width: 800px;
             margin: 0 auto 20px auto;
             page-break-after: always;
-            height: auto;
             min-height: 600px;
             position: relative;
         }
         .pdf-mode {
             overflow: hidden;
             height: 100vh;
+            background: #f3f4f6;
         }
     </style>
 </head>
@@ -250,7 +250,7 @@
                 { id: 'businessModel', label: '商業模式 (BMC)', icon: Icons.Layout },
             ];
 
-            // 強健的 JSON 解析器 v6 (針對陣列與物件逗號遺漏的全面修復)
+            // 強健的 JSON 解析器 v6
             const parseJSON = (text) => {
                 if (!text) throw new Error("AI 未回傳任何內容");
 
@@ -268,26 +268,24 @@
                     throw new Error("無法識別 JSON 結構");
                 }
 
-                // 修復 1: 尾隨逗號
+                // 1. 修復尾隨逗號
                 let fixed = cleaned.replace(/,(\s*[\]}])/g, '$1');
                 
-                // 修復 2: 字串陣列漏掉逗號 (例如 "A" "B")
+                // 2. 修復字串陣列漏掉逗號 (例如 "A" "B")
                 fixed = fixed.replace(/"\s+(?=")/g, '", ');
-
-                // 修復 3: 物件陣列漏掉逗號 (例如 } {)
+                
+                // 3. 修復物件陣列漏掉逗號 (} { -> }, {)
                 fixed = fixed.replace(/}\s*{/g, '}, {');
                 
-                // 修復 4: 陣列結束後接續字串 (例如 ] "key")
+                // 4. 修復陣列結束後接續字串 (] "key" -> ], "key")
                 fixed = fixed.replace(/]\s*"/g, '], "');
 
                 try {
                     return JSON.parse(fixed);
                 } catch (e) {
                     try {
-                        // 備用：如果修復失敗，嘗試最原始的
                         return JSON.parse(cleaned);
                     } catch (e2) {
-                        // 顯示部分錯誤訊息以供除錯
                          throw new Error(`JSON 格式錯誤: ${e2.message.slice(0, 50)}...`);
                     }
                 }
@@ -306,6 +304,7 @@
                 - Content in Traditional Chinese.
                 - NO trailing commas.
                 - **STRICTLY SEPARATE ARRAY ITEMS WITH COMMAS**. (e.g. ["A", "B"])
+                - **STRICTLY SEPARATE OBJECTS WITH COMMAS**. (e.g. { ... }, { ... })
                 
                 REQUIRED SCORING LOGIC for Competitor Pricing:
                 - Mass Market (e.g., Uniqlo, Zara): 10-35 points.
@@ -314,23 +313,25 @@
                 - Luxury/Select Shop (e.g., INVINCIBLE, Kith, Visvim): 85-100 points.
                 * INVINCIBLE must be scored significantly higher (>80) than mid-tier brands.
 
-                Required JSON Structure:
+                Example JSON Output Structure (Follow this exactly):
                 {
-                    "brandName": "${query}",
+                    "brandName": "Nike",
                     "intelligence": {
                         "sentiment": { "positive": 70, "neutral": 20, "negative": 10 },
-                        "keywords": ["k1", "k2", "k3", "k4", "k5"],
-                        "summary": "Summary...",
-                        "competitorNews": [{ "source": "Source", "title": "Title", "date": "YYYY-MM-DD" }],
+                        "keywords": ["Shoes", "Sport", "Run"],
+                        "summary": "A leading sports brand...",
+                        "competitorNews": [{ "source": "News", "title": "Title", "date": "2023-01-01" }],
                         "swot": {
-                            "strengths": ["S1", "S2", "S3"],
-                            "weaknesses": ["W1", "W2", "W3"],
-                            "opportunities": ["O1", "O2", "O3"],
-                            "threats": ["T1", "T2", "T3"]
+                            "strengths": ["S1", "S2"],
+                            "weaknesses": ["W1", "W2"],
+                            "opportunities": ["O1", "O2"],
+                            "threats": ["T1", "T2"]
                         }
                     },
                     "positioning": {
-                        "vision": "Vision", "mission": "Mission", "values": "Values",
+                        "vision": "To bring inspiration...",
+                        "mission": "Do everything possible...",
+                        "values": "Innovation...",
                         "attributes": [
                             { "subject": "價格親民", "A": 50, "fullMark": 100 },
                             { "subject": "品質高端", "A": 80, "fullMark": 100 },
@@ -341,15 +342,22 @@
                         ]
                     },
                     "competitors": [
-                        { "name": "Competitor A", "type": "同類型", "feature": "Feature", "price": 80, "quality": 70, "brandHeat": 90 }
+                        { "name": "Adidas", "type": "同類型", "feature": "Boost technology", "price": 70, "quality": 80, "brandHeat": 85 },
+                        { "name": "Puma", "type": "同類型", "feature": "Lifestyle focus", "price": 60, "quality": 70, "brandHeat": 75 }
                     ],
                     "targetAudience": [
-                        { "id": 1, "name": "Persona", "age": "25-30歲", "income": "4-5萬", "painPoint": "Pain", "hobby": "Hobby" }
+                        { "id": 1, "name": "Runner", "age": "20-30", "income": "Medium", "painPoint": "Need comfort", "hobby": "Running" }
                     ],
                     "businessModel": {
-                        "partners": ["P1"], "activities": ["A1"], "resources": ["R1"], "valueProp": ["V1"],
-                        "relationships": ["Rel1"], "channels": ["Ch1"], "segments": ["Seg1"],
-                        "costStructure": ["C1"], "revenueStreams": ["Rev1"]
+                        "partners": ["Factory A", "Designer B"],
+                        "activities": ["Design", "Marketing"],
+                        "resources": ["Brand", "Tech"],
+                        "valueProp": ["Performance", "Style"],
+                        "relationships": ["Community", "App"],
+                        "channels": ["Retail", "Online"],
+                        "segments": ["Athletes", "Kids"],
+                        "costStructure": ["R&D", "Marketing"],
+                        "revenueStreams": ["Sales", "Apps"]
                     }
                 }
 
@@ -514,7 +522,7 @@
                             const imgProps = pdf.getImageProperties(imgData);
                             const ratio = Math.min(pdfWidth / imgProps.width, pdfHeight / imgProps.height);
                             
-                            const w = imgProps.width * ratio * 0.9;
+                            const w = imgProps.width * ratio * 0.9; // 90% width to leave margins
                             const h = imgProps.height * ratio * 0.9;
                             const x = (pdfWidth - w) / 2;
                             const y = (pdfHeight - h) / 2;
@@ -844,24 +852,17 @@
                          return (
                             <div className="h-full p-6 overflow-y-auto custom-scrollbar pb-20 md:pb-6">
                                 <h2 className="text-2xl font-bold mb-4">商業模式畫布</h2>
-                                <div className="grid grid-cols-5 grid-rows-[200px_200px_100px] gap-2 min-h-[500px] border-2 border-slate-800 bg-slate-800 p-2 rounded-lg h-full">
-                                    <div className="bg-white p-2 rounded row-span-2 col-span-1 overflow-y-auto"><h4 className="font-bold text-xs text-slate-500 mb-1">關鍵合作夥伴</h4><ul className="list-disc pl-4 text-xs text-slate-800">{data.businessModel.partners.map((item,i)=><li key={i}>{item}</li>)}</ul></div>
-                                    <div className="col-span-1 row-span-2 flex flex-col gap-2">
-                                        <div className="bg-white p-2 rounded flex-1 overflow-y-auto"><h4 className="font-bold text-xs text-slate-500 mb-1">關鍵活動</h4><ul className="list-disc pl-4 text-xs text-slate-800">{data.businessModel.activities.map((item,i)=><li key={i}>{item}</li>)}</ul></div>
-                                        <div className="bg-white p-2 rounded flex-1 overflow-y-auto"><h4 className="font-bold text-xs text-slate-500 mb-1">關鍵資源</h4><ul className="list-disc pl-4 text-xs text-slate-800">{data.businessModel.resources.map((item,i)=><li key={i}>{item}</li>)}</ul></div>
-                                    </div>
-                                    <div className="bg-white p-2 rounded row-span-2 col-span-1 overflow-y-auto"><h4 className="font-bold text-xs text-blue-600 mb-1">價值主張</h4><ul className="list-disc pl-4 text-xs text-slate-800">{data.businessModel.valueProp.map((item,i)=><li key={i}>{item}</li>)}</ul></div>
-                                    <div className="col-span-1 row-span-2 flex flex-col gap-2">
-                                        <div className="bg-white p-2 rounded flex-1 overflow-y-auto"><h4 className="font-bold text-xs text-slate-500 mb-1">顧客關係</h4><ul className="list-disc pl-4 text-xs text-slate-800">{data.businessModel.relationships.map((item,i)=><li key={i}>{item}</li>)}</ul></div>
-                                        <div className="bg-white p-2 rounded flex-1 overflow-y-auto"><h4 className="font-bold text-xs text-slate-500 mb-1">通路</h4><ul className="list-disc pl-4 text-xs text-slate-800">{data.businessModel.channels.map((item,i)=><li key={i}>{item}</li>)}</ul></div>
-                                    </div>
-                                    <div className="bg-white p-2 rounded row-span-2 col-span-1 overflow-y-auto"><h4 className="font-bold text-xs text-slate-500 mb-1">目標客群</h4><ul className="list-disc pl-4 text-xs text-slate-800">{data.businessModel.segments.map((item,i)=><li key={i}>{item}</li>)}</ul></div>
-                                    <div className="bg-white p-2 rounded col-span-2.5 row-start-3 col-start-1 overflow-y-auto"><h4 className="font-bold text-xs text-slate-500 mb-1">成本結構</h4><div className="flex flex-wrap gap-2">{data.businessModel.costStructure.map((item,i)=><span key={i} className="bg-red-50 text-red-700 text-[10px] px-2 py-1 rounded">{item}</span>)}</div></div>
-                                    <div className="bg-white p-2 rounded col-span-2.5 row-start-3 col-start-3 overflow-y-auto"><h4 className="font-bold text-xs text-slate-500 mb-1">收益流</h4><div className="flex flex-wrap gap-2">{data.businessModel.revenueStreams.map((item,i)=><span key={i} className="bg-green-50 text-green-700 text-[10px] px-2 py-1 rounded">{item}</span>)}</div></div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {Object.entries(data.businessModel).map(([k,v], i)=>(
+                                        <div key={i} className="bg-white border p-3 rounded shadow-sm">
+                                            <h4 className="text-xs font-bold uppercase text-slate-500 mb-2">{BMC_TITLES[k] || k}</h4>
+                                            <ul className="list-disc pl-4 text-xs space-y-1">{v.map((item,j)=><li key={j}>{item}</li>)}</ul>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                          );
-                    default: return <div className="p-10 text-center text-slate-400">請選擇左側功能進行預覽</div>;
+                    default: return <div className="p-10 text-center text-slate-400">請選擇功能</div>;
                 }
             }
 
