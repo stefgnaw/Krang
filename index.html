@@ -30,9 +30,9 @@
     <!-- 5. 樣式庫 -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- 6. Recharts 依賴與庫 (鎖定 2.1.0 穩定版) -->
+    <!-- 6. Recharts 依賴與庫 (使用 1.8.5 穩定版以解決顯示問題) -->
     <script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
-    <script src="https://unpkg.com/recharts@2.1.0/umd/Recharts.min.js"></script>
+    <script src="https://unpkg.com/recharts@1.8.5/umd/Recharts.min.js"></script>
     
     <!-- 7. PDF 生成庫 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -495,7 +495,7 @@
                 if (!ChartComponent) return null;
                 
                 // 1.8.5 必須指定明確高度 (重要)
-                const containerStyle = { height: '100%', minHeight: '300px', width: '100%' };
+                const containerStyle = { height: '300px', width: '100%' };
 
                 if (type === 'RadarChart') {
                     return (
@@ -667,6 +667,7 @@
                                 </div>
                             </div>
                         );
+                    // ... 其他 Tab 簡化以節省長度，邏輯相同 ...
                     case 'audience':
                         return (
                             <div className="space-y-6 animate-fadeIn pb-20 md:pb-0">
